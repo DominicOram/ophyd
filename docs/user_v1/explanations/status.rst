@@ -184,6 +184,35 @@ Note that ``set_finished``, ``subscribe`` and ``clear_sub`` are gone; they are
 handled automatically, internally. See
 :class:`~ophyd.status.SubscriptionStatus` for additional options.
 
+StableSubscriptionStatus
+------------------------
+
+The :class:`~ophyd.status.StableSubscriptionStatus` is a Status object that is
+similar to the :class:`~ophyd.status.SubscriptionStatus` but is only marked
+finished based on an ophyd event remaining stable for some given time. For
+example, this could be used to ensure a temperature remains in a given range
+for a set amount of time:
+
+.. code:: python
+
+   from ophyd import Device, Component, StableSubscriptionStatus
+
+   class MyTempSensor(Device):
+       ...
+       # The set point and readback of a temperature that
+       # may fluctuate for a second before it can be considered set
+       temp_sp = Component(...)
+       temp_rbv = Component(...)
+       def set(self, set_value):
+           def check_value(*, old_value, value, **kwargs):
+               "Return True when the temperature is in a valid range."
+               return set_value - 0.01 < value < set_value + 0.01
+
+           status = StableSubscriptionStatus(self.temp_rbv, check_value, stability_time=1)
+           self.temp_sp.set(set_value)
+           return status
+
+
 Partial Progress Updates
 ------------------------
 
